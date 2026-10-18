@@ -10,6 +10,8 @@ class AIProfile(db.Model):
     provider = db.Column(db.String(24), nullable=False)
     model = db.Column(db.String(160), nullable=False)
     region = db.Column(db.String(32), nullable=False, default='default')
+    # Validated custom endpoint URL; empty for the fixed official providers.
+    base_url = db.Column(db.String(2048), nullable=False, default='', server_default='')
     encrypted_key = db.Column(db.Text, nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)
     tested_version = db.Column(db.Integer)

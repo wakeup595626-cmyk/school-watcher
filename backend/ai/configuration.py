@@ -5,7 +5,8 @@ import re
 from backend.database.db import db
 from backend.core.secrets import decrypt_field, encrypt_field, encryption_available
 from backend.ai.models import AIProfile, AIBinding, AIBudget
-from backend.ai.providers import ENDPOINTS, PROVIDER_NAMES, DEFAULT_REGIONS, endpoint_for
+from backend.ai.providers import (ENDPOINTS, PROVIDER_NAMES, DEFAULT_REGIONS, endpoint_for,
+                                  normalize_custom_endpoint)
 
 PURPOSES = ('directory', 'summary')
 KEY_PAGES = {
@@ -25,7 +26,8 @@ class AIConfigError(ValueError):
 def _metadata(profile):
     return {'id': profile.id, 'profile_id': profile.id, 'name': profile.name,
             'version': profile.version, 'provider': profile.provider, 'model': profile.model,
-            'region': profile.region, 'max_output_tokens': profile.max_output_tokens,
+            'region': profile.region, 'base_url': profile.base_url or '',
+            'max_output_tokens': profile.max_output_tokens,
             'enabled': profile.enabled, 'tested': profile.tested_version == profile.version,
             'has_key': bool(profile.encrypted_key), 'last_test_code': profile.last_test_code}
 
@@ -81,8 +83,8 @@ def credential_for(binding, *, allow_untested=False):
         if not allow_untested and (not profile.enabled or profile.tested_version != profile.version):
             raise AIConfigError('AI 配置已停用', 'profile_disabled')
         # Check locked public metadata too, so a caller cannot redirect an authenticated key.
-        for field in ('provider', 'model', 'region'):
-            if binding.get(field) != getattr(profile, field):
+        for field in ('provider', 'model', 'region', 'base_url'):
+            if binding.get(field, '') != (getattr(profile, field) or ''):
                 raise AIConfigError('AI 配置引用不匹配', 'configuration_changed')
         key = decrypt_field(profile.encrypted_key)
     if not key:
@@ -97,7 +99,8 @@ def public_settings():
     bindings = {row.purpose: row.profile_id for row in AIBinding.query.all()}
     profiles = [_metadata(p) for p in AIProfile.query.filter_by(deleted_at=None).order_by(AIProfile.id).all()]
     legacy = _legacy_binding() if not AIProfile.query.first() else None
-    return {'providers': [{'id': key, 'name': PROVIDER_NAMES[key], 'regions': list(value), 'key_url': KEY_PAGES[key]}
+    return {'providers': [{'id': key, 'name': PROVIDER_NAMES[key], 'regions': list(value),
+                           'key_url': KEY_PAGES.get(key, ''), 'custom': key == 'custom'}
                           for key, value in ENDPOINTS.items()],
             'profiles': profiles, 'bindings': bindings, 'legacy': legacy,
             'encryption_available': encryption_available(),
@@ -117,7 +120,8 @@ def public_settings():
 def save_profile(payload, profile_id=None):
     if not isinstance(payload, dict):
         raise AIConfigError('配置必须是对象')
-    allowed = {'name', 'provider', 'model', 'region', 'api_key', 'max_output_tokens', 'enabled', 'expected_version'}
+    allowed = {'name', 'provider', 'model', 'region', 'base_url', 'api_key', 'max_output_tokens',
+               'enabled', 'expected_version'}
     if set(payload) - allowed:
         raise AIConfigError('包含不支持的配置字段')
     if 'enabled' in payload and type(payload['enabled']) is not bool:
@@ -129,7 +133,22 @@ def save_profile(payload, profile_id=None):
         raise AIConfigError('配置已被其他管理员更新', 'configuration_changed')
     provider = payload.get('provider', row.provider if row else '')
     region = payload.get('region', row.region if row and provider == row.provider else DEFAULT_REGIONS.get(provider, ''))
-    endpoint_for(provider, region)
+    base_url = row.base_url or '' if row and provider == row.provider else ''
+    if provider == 'custom':
+        if 'base_url' in payload:
+            base_url = str(payload.get('base_url') or '')
+        if not base_url.strip():
+            raise AIConfigError('请填写自定义接口地址')
+        try:
+            base_url = normalize_custom_endpoint(base_url)
+        except ValueError as exc:
+            raise AIConfigError(str(exc)) from None
+        region = DEFAULT_REGIONS['custom']
+    else:
+        if payload.get('base_url'):
+            raise AIConfigError('只有自定义（OpenAI 兼容）服务可以填写接口地址')
+        endpoint_for(provider, region)
+        base_url = ''
     model = str(payload.get('model', row.model if row else '')).strip()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}', model):
         raise AIConfigError('请填写有效的模型或接入点标识')
@@ -146,13 +165,14 @@ def save_profile(payload, profile_id=None):
         raise AIConfigError('新配置需要 API 密钥')
     encrypted = encrypt_field(raw_key.strip()) if raw_key is not None else row.encrypted_key
     changed = row is None or any([row.provider != provider, row.region != region, row.model != model,
+                                 (row.base_url or '') != base_url,
                                  row.max_output_tokens != maximum, raw_key is not None])
     if row is None:
         row = AIProfile(version=1, enabled=False)
         db.session.add(row)
     elif changed:
         row.version += 1
-    row.name, row.provider, row.region, row.model = name, provider, region, model
+    row.name, row.provider, row.region, row.model, row.base_url = name, provider, region, model, base_url
     row.encrypted_key, row.max_output_tokens, row.updated_at = encrypted, maximum, datetime.utcnow()
     if changed:
         row.enabled, row.tested_version, row.last_test_code = False, None, 'not_tested'

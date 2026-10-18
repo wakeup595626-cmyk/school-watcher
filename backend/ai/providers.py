@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import codecs
 import json
 import time
+from urllib.parse import urlsplit
 import requests
 from urllib3.exceptions import (ConnectTimeoutError, NameResolutionError, NewConnectionError,
                                 ProtocolError, ReadTimeoutError, SSLError)
@@ -20,11 +21,15 @@ ENDPOINTS = {
     },
     'ark': {'cn-beijing': 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'},
     'bigmodel': {'default': 'https://open.bigmodel.cn/api/paas/v4/chat/completions'},
+    # 'custom' is the administrator's own OpenAI-compatible endpoint; its URL
+    # comes from the saved profile instead of this fixed table.
+    'custom': {'default': None},
 }
 # Familiar model-family labels for UI; provider IDs still select the official API.
 PROVIDER_NAMES = {'deepseek': 'DeepSeek', 'dashscope': '通义千问',
-                  'ark': '豆包', 'bigmodel': 'GLM'}
-DEFAULT_REGIONS = {'deepseek': 'default', 'dashscope': 'cn-beijing', 'ark': 'cn-beijing', 'bigmodel': 'default'}
+                  'ark': '豆包', 'bigmodel': 'GLM', 'custom': '自定义（OpenAI 兼容）'}
+DEFAULT_REGIONS = {'deepseek': 'default', 'dashscope': 'cn-beijing', 'ark': 'cn-beijing',
+                   'bigmodel': 'default', 'custom': 'default'}
 
 
 class ProviderError(Exception):
@@ -46,9 +51,59 @@ class ProviderResult:
 
 def endpoint_for(provider, region):
     try:
-        return ENDPOINTS[provider][region]
+        url = ENDPOINTS[provider][region]
     except KeyError:
         raise ValueError('不支持的服务商或官方地域') from None
+    if url is None:
+        # Custom endpoints live on the profile; they never come from a request URL.
+        raise ValueError('自定义服务使用配置中保存的接口地址')
+    return url
+
+
+def normalize_custom_endpoint(raw):
+    """Validate and normalize a user-supplied OpenAI-compatible endpoint.
+
+    Accepts either a base URL ('https://host/v1') or the full chat path
+    ('https://host/v1/chat/completions'). Raises ValueError for anything else.
+    """
+    if not isinstance(raw, str):
+        raise ValueError('请填写自定义接口地址')
+    value = raw.strip()
+    if not value or len(value) > 2048 or any(ord(c) < 33 or ord(c) == 127 for c in value):
+        raise ValueError('请填写有效的接口地址（不含空格或控制字符）')
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        raise ValueError('接口地址不是有效的 URL') from None
+    if parts.scheme not in ('http', 'https') or not parts.hostname:
+        raise ValueError('接口地址必须以 http:// 或 https:// 开头并包含主机名')
+    if parts.username is not None or parts.password is not None:
+        raise ValueError('接口地址不能包含用户名或密码')
+    if parts.query or parts.fragment:
+        raise ValueError('接口地址不能包含查询参数或片段')
+    if parts.hostname != parts.hostname.strip() or any(ord(c) < 33 for c in parts.netloc):
+        raise ValueError('接口地址包含无效字符')
+    path = (parts.path or '').rstrip('/')
+    if path.endswith('/chat/completions'):
+        normalized_path = path
+    else:
+        normalized_path = path + '/chat/completions'
+    host = parts.hostname
+    if ':' in host and not host.startswith('['):
+        host = '[' + host + ']'
+    netloc = host + ((':' + str(parts.port)) if parts.port else '')
+    return parts.scheme + '://' + netloc + normalized_path
+
+
+def request_url_for(profile):
+    """Resolve the dispatch URL for a saved profile snapshot.
+
+    Fixed providers always use the official table; the custom provider uses its
+    own validated, stored address so a key can never be redirected elsewhere.
+    """
+    if profile.get('provider') == 'custom':
+        return normalize_custom_endpoint(profile.get('base_url') or '')
+    return endpoint_for(profile['provider'], profile['region'])
 
 
 def _usage(payload):
@@ -96,7 +151,7 @@ def _transport_evidence(exc):
 
 def complete(profile, api_key, messages, *, max_tokens=None, streaming=False, on_content=None, on_progress=None):
     """A fresh session avoids shared credentials/proxies and SDK retry behavior."""
-    url = endpoint_for(profile['provider'], profile['region'])
+    url = request_url_for(profile)
     budget = min(int(max_tokens or profile.get('max_output_tokens', 4096)), 16384)
     streaming = bool(streaming and profile['provider'] == 'deepseek')
     from backend.services.discovery_policy import get_policy
@@ -106,6 +161,11 @@ def complete(profile, api_key, messages, *, max_tokens=None, streaming=False, on
         body = {**common, 'input': {'messages': messages}, 'parameters': {
             'result_format': 'message', 'max_tokens': budget, 'temperature': temperature,
             'response_format': {'type': 'json_object'}, 'enable_thinking': False}}
+    elif profile['provider'] == 'custom':
+        # Third-party OpenAI-compatible gateways vary widely; response_format
+        # is the most commonly rejected field, so structured output relies on
+        # the Skill prompt plus the program-side JSON contract validation.
+        body = {**common, 'messages': messages, 'max_tokens': budget, 'temperature': temperature}
     else:
         body = {**common, 'messages': messages, 'max_tokens': budget, 'temperature': temperature,
                 'response_format': {'type': 'json_object'}}

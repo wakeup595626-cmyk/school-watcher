@@ -54,7 +54,7 @@ def main():
                 page.screenshot(path=str(folder / f'schools-{label}.png'), full_page=True)
                 assert not [url for url in requests if '/discover' in url]
                 page.goto(base + '/admin#platform')
-                expect(page.locator('#aiProvider option')).to_have_count(4)
+                expect(page.locator('#aiProvider option')).to_have_count(5)
                 expect(page.locator('#aiSummary, #aiSummaryLimit, #summaryIds')).to_have_count(0)
                 expect(page.get_by_label('模型名称', exact=True)).to_be_visible()
                 expect(page.locator('#aiProfiles')).to_contain_text('还没有连接 AI')

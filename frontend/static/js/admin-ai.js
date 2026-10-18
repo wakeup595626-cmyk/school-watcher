@@ -18,7 +18,8 @@
         'ap-southeast-1': uiT('新加坡'), 'us-east-1': uiT('美国（弗吉尼亚）')};
     function profileLabel(profile) {
         const provider = settings.providers.find(p => p.id === profile.provider);
-        const parts = [provider ? t(provider.name) : profile.provider, profile.model];
+        const parts = [profile.provider === 'custom' && profile.name ? profile.name
+            : (provider ? t(provider.name) : profile.provider), profile.model];
         if (provider && provider.regions.length > 1) parts.push(t(regionNames[profile.region] || profile.region));
         if (settings.profiles.some(p => p.id !== profile.id && p.provider === profile.provider &&
                 p.model === profile.model && p.region === profile.region)) parts.push(t('连接 {id}', {id:profile.id}));
@@ -32,6 +33,11 @@
     }
     function regions(selected) {
         const provider = settings.providers.find(p => p.id === field('aiProvider').value);
+        const isCustom = field('aiProvider').value === 'custom';
+        field('aiBaseUrlGroup').hidden = !isCustom;
+        field('aiNameGroup').hidden = !isCustom;
+        field('aiBaseUrl').required = isCustom;
+        if (field('aiKeyLink')) field('aiKeyLink').hidden = isCustom;
         if (field('aiKeyLink') && provider) {
             field('aiKeyLink').href = provider.key_url;
             field('aiKeyLink').textContent = t('获取 API 密钥（{provider}官网）', {provider:t(provider.name)});
@@ -41,7 +47,9 @@
         field('aiRegionGroup').hidden = !provider || provider.regions.length <= 1;
         field('aiModelHelp').textContent = provider && provider.id === 'ark'
             ? t('填写方舟控制台中的模型名称；如果你创建过自定义推理接入点，也可以填它的 ep- 开头编号。这个编号代表你在方舟创建的模型调用入口。')
-            : t('填写{provider}提供的模型名称，按控制台或 API 文档中的原样复制。', {provider:t(provider ? provider.name : uiT('服务商'))});
+            : (isCustom
+                ? t('填写你的服务所调用的模型名称，按其文档中的原样复制。')
+                : t('填写{provider}提供的模型名称，按控制台或 API 文档中的原样复制。', {provider:t(provider ? provider.name : uiT('服务商'))}));
     }
     function renderProviderNames() {
         if (!settings) return;
@@ -78,6 +86,8 @@
         field('aiProvider').value = profile.provider;
         regions(profile.region);
         field('aiModel').value = profile.model;
+        field('aiBaseUrl').value = profile.base_url || '';
+        field('aiName').value = profile.provider === 'custom' ? (profile.name || '') : '';
         field('aiKey').required = !profile.has_key;
         field('aiKey').placeholder = profile.has_key ? uiT('已保存密钥，点击小眼睛查看') : '';
         field('aiKeyHelp').textContent = profile.has_key
@@ -92,6 +102,8 @@
         field('aiProfileId').value = '';
         field('aiFormTitle').textContent = uiT('添加 AI 服务');
         field('aiReset').hidden = true;
+        field('aiBaseUrl').value = '';
+        field('aiName').value = '';
         field('aiKey').required = true;
         field('aiKeyHelp').textContent = uiT('从所选服务商获取密钥。密钥加密保存，点击小眼睛可显示或隐藏。');
         regions();
@@ -202,6 +214,10 @@
             const id = field('aiProfileId').value;
             const data = {provider: field('aiProvider').value,
                 region: field('aiRegion').value, model: field('aiModel').value};
+            if (field('aiProvider').value === 'custom') {
+                data.base_url = field('aiBaseUrl').value;
+                if (field('aiName').value.trim()) data.name = field('aiName').value.trim();
+            }
             if (field('aiKey').value && field('aiKey').value !== savedKey) data.api_key = field('aiKey').value;
             if (id) data.expected_version = editingVersion;
             const saved = await api('/api/admin/ai/profiles' + (id ? '/' + id : ''), id ? 'PUT' : 'POST', data);
