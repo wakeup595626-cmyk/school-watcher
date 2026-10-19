@@ -42,7 +42,7 @@ def check():
                 page.route('**/*',serve)
                 page.add_init_script('localStorage.setItem("theme",'+json.dumps(theme)+')')
                 page.goto('http://localhost/collection/setup')
-                expect(page.locator('#aiProvider option')).to_have_count(4)
+                expect(page.locator('#aiProvider option')).to_have_count(5)
                 page.locator('#setupAIDetails').evaluate('(node) => {node.open=true;}')
                 page.locator('#aiProvider').select_option('dashscope')
                 page.locator('#aiRegion').select_option('us-east-1')
