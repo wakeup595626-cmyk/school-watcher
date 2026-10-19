@@ -282,9 +282,13 @@ def check():
                     changed.append({'url':base+'/bridge','label':'新增导航桥梁','kind':'navigation','path_json':['学校官网','组织机构'],'state':'fetched'})
                     page.emulate_media(reduced_motion='no-preference')
                     fixture.publish(changed);page.locator('#monitorRefresh').click()
-                    page.wait_for_function("() => discoveryMonitor.discoveryAtlas.nodes.some(n=>n.label==='新增导航桥梁'&&n.baseScale>0&&n.baseScale<1)")
-                    page.wait_for_timeout(900)
-                    assert page.evaluate("discoveryMonitor.discoveryAtlas.nodes.find(n=>n.label==='新增导航桥梁').baseScale===1")
+                    page.wait_for_function("() => discoveryMonitor.discoveryAtlas.nodes.some(n=>n.label==='新增导航桥梁')", timeout=10000)
+                    # Entrance motion advances per rendered frame. Wait for the
+                    # final state instead of assuming 900ms is enough on slow CI.
+                    page.wait_for_function(
+                        "() => {const n=discoveryMonitor.discoveryAtlas.nodes.find(n=>n.label==='新增导航桥梁');"
+                        "return Boolean(n)&&Math.abs(n.baseScale-1)<1e-6;}",
+                        timeout=15000, polling=100)
                     fixture.publish(pages);page.locator('#monitorRefresh').click()
                     page.emulate_media(reduced_motion='reduce')
                 # Existing theme switch recolors the same WebGL scene.
