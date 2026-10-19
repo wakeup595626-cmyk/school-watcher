@@ -6,7 +6,7 @@
 
 ## 报告问题
 
-先搜索已有 [Issues](https://github.com/jintairezhao/school-watcher/issues)。提交时提供：
+先搜索已有 [Issues](https://github.com/wakeup595626-cmyk/school-watcher/issues)。提交时提供：
 
 - 使用的提交或版本、操作系统、Python 版本及部署方式。
 - 最少复现步骤、预期结果与实际结果。

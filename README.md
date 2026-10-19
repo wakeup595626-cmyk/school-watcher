@@ -30,7 +30,7 @@
 
 ### Windows / macOS 桌面版
 
-从 [Releases](https://github.com/jintairezhao/school-watcher/releases) 下载 Windows x64 安装程序，或适合 Apple 芯片／Intel Mac 的 DMG。桌面版在独立窗口中打开即用，无需账号和 Python，可直接管理系统。优先使用已有 Edge／Chrome，缺少时自动下载独立采集组件；应用菜单的「检查更新」可以下载新版并确认安装。全新安装不预选学校，从学校目录关注高校后自动查找信息，已读到的通知立即可用，AI 为可选辅助。安装说明、数据位置及版本发布流程见 [桌面版说明](deploy/DESKTOP.md)。
+从 [Releases](https://github.com/wakeup595626-cmyk/school-watcher/releases) 下载 Windows x64 安装程序，或适合 Apple 芯片／Intel Mac 的 DMG。桌面版在独立窗口中打开即用，无需账号和 Python，可直接管理系统。优先使用已有 Edge／Chrome，缺少时自动下载独立采集组件；应用菜单的「检查更新」可以下载新版并确认安装。全新安装不预选学校，从学校目录关注高校后自动查找信息，已读到的通知立即可用，AI 为可选辅助。安装说明、数据位置及版本发布流程见 [桌面版说明](deploy/DESKTOP.md)。
 
 ### 源码运行（与桌面版一致）
 
@@ -116,4 +116,4 @@ python tests/smoke/check_minimal_runtime.py
 
 字体、部分图标和浏览器容器配置分别遵循其原始许可证，详见 [第三方声明](THIRD_PARTY_NOTICES.md)。高校网页、通知和附件的权利属于各自权利人，项目代码的许可证不授予这些内容的再利用权。
 
-问题和建议请提交 [Issue](https://github.com/jintairezhao/school-watcher/issues)；涉及凭据或漏洞请遵循 [安全政策](SECURITY.md)，不要公开敏感数据。
+问题和建议请提交 [Issue](https://github.com/wakeup595626-cmyk/school-watcher/issues)；涉及凭据或漏洞请遵循 [安全政策](SECURITY.md)，不要公开敏感数据。

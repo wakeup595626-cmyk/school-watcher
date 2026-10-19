@@ -88,10 +88,16 @@ def normalize_custom_endpoint(raw):
         normalized_path = path
     else:
         normalized_path = path + '/chat/completions'
+    try:
+        port = parts.port
+    except ValueError:
+        raise ValueError('接口地址的端口必须是 1-65535 的整数') from None
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError('接口地址的端口必须是 1-65535 的整数')
     host = parts.hostname
     if ':' in host and not host.startswith('['):
         host = '[' + host + ']'
-    netloc = host + ((':' + str(parts.port)) if parts.port else '')
+    netloc = host + ((':' + str(port)) if port is not None else '')
     return parts.scheme + '://' + netloc + normalized_path
 
 

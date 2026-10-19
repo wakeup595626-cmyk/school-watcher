@@ -440,6 +440,7 @@
   "测试连接（调用 API）": "Test connection (uses API)",
   "正在测试 AI 连接…": "Testing AI connection…",
   "测试通过，请在下方选择使用这个服务的功能并保存。": "Connection passed. Select this service for a feature below and save.",
+  "测试通过，但服务商未返回调用用量；实际调用不会计入 Token 统计。": "Connection passed, but the provider did not report usage. Actual calls will not count toward token statistics.",
   "测试未通过，请核对模型名称、密钥及其所属区域。": "Connection test failed. Check the model name, key and region.",
   "服务商未返回调用用量，暂时无法启用。": "The provider did not report usage. This service cannot be enabled yet.",
   "原有服务配置已保留。请添加并测试来源识别服务，再保存下方的功能设置。": "Your previous configuration is retained. Add and test a discovery service, then save the feature settings below.",

@@ -4,7 +4,7 @@
 
 ## 安装版
 
-从 [GitHub Releases](https://github.com/jintairezhao/school-watcher/releases) 下载适合系统的安装包。Windows、macOS 的安装、更新、组件准备与数据位置见 [桌面版说明](DESKTOP.md)。
+从 [GitHub Releases](https://github.com/wakeup595626-cmyk/school-watcher/releases) 下载适合系统的安装包。Windows、macOS 的安装、更新、组件准备与数据位置见 [桌面版说明](DESKTOP.md)。
 
 ## 源码运行
 

@@ -259,6 +259,16 @@ def _settle(execution_id, *, status, output=None, usage=None, error_code='', req
                 reserved_tokens=AIBudget.reserved_tokens - row.reserved_tokens,
                 used_tokens=AIBudget.used_tokens + total, updated_at=datetime.utcnow()))
         row.reserved_tokens = 0
+    elif row.status == 'succeeded' and row.skill_id == 'connection-test':
+        # A successful provider response is a valid connection test even when a
+        # third-party OpenAI-compatible gateway omits the usage object. Release
+        # the test reservation instead of stranding summary quota forever; the
+        # execution keeps known=False so the dashboard still reports unknown usage.
+        for key in row.budget_keys:
+            db.session.execute(update(AIBudget).where(AIBudget.key == key).values(
+                reserved_tokens=AIBudget.reserved_tokens - row.reserved_tokens,
+                updated_at=datetime.utcnow()))
+        row.reserved_tokens = 0
     # Unknown usage retains its reservation until administrator reconciliation.
     db.session.commit()
     return _result(row)
@@ -488,7 +498,8 @@ def test_connection(profile_id):
                       purpose='summary', binding=binding, skill_id='connection-test', skill_version='1',
                       skill_digest=digest(messages), input_digest=digest(messages), mode='test',
                       messages=messages, validator=check, allow_untested=True, output_tokens=256)
-    success = result['status'] == 'succeeded' and result['usage'].get('known')
+    usage_reported = bool(result['usage'].get('known'))
+    success = result['status'] == 'succeeded'
     code = 'ok' if success else result['error_code'] or 'usage_unavailable'
     applied = db.session.execute(update(AIProfile).where(AIProfile.id == profile_id, AIProfile.version == version).values(
         tested_version=version if success else None, enabled=bool(success), last_test_code=code))
@@ -507,7 +518,7 @@ def test_connection(profile_id):
     if success:
         from backend.ai.connection_recovery import resume_connection_tasks
         resume_connection_tasks(binding)
-    return {**result, 'tested': bool(success), 'test_code': code}
+    return {**result, 'tested': bool(success), 'test_code': code, 'usage_reported': usage_reported}
 
 
 # This is the administrator's "check this API profile" entry point, named for what

@@ -4,7 +4,7 @@
 
 本机访问保护绕过、凭据泄漏、服务器请求伪造、任意文件访问、脚本注入及采集浏览器访问问题，请勿直接附在公开 Issue 或 PR 中。
 
-优先使用 GitHub 的 [私密漏洞报告](https://github.com/jintairezhao/school-watcher/security/advisories/new)。该入口需要维护者在仓库公开后启用 Private vulnerability reporting；若入口不可用，可先提交只请求建立私密联系的 Issue，不包含漏洞细节、利用代码、日志或密钥。
+优先使用 GitHub 的 [私密漏洞报告](https://github.com/wakeup595626-cmyk/school-watcher/security/advisories/new)。该入口需要维护者在仓库公开后启用 Private vulnerability reporting；若入口不可用，可先提交只请求建立私密联系的 Issue，不包含漏洞细节、利用代码、日志或密钥。
 
 私下报告时提供受影响的提交、部署方式、最少复现步骤、影响范围和已脱敏的证据。不要在第三方部署或高校网站上进行未经授权的验证。本项目暂不承诺固定响应时限或漏洞奖励。
 

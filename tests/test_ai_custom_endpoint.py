@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from backend.ai.configuration import AIConfigError, credential_for, save_profile, _metadata
-from backend.ai.models import AIProfile
+from backend.ai.models import AIExecution, AIProfile
 from backend.ai.providers import ProviderResult, complete, normalize_custom_endpoint
 from backend.ai.runtime import test_connection
 from backend.database.db import db
@@ -34,6 +34,9 @@ class CustomEndpointValidationTests(unittest.TestCase):
                       'https://relay.example.com/v1?token=secret',
                       'https://relay.example.com/v1#frag',
                       'https://relay.example.com/v1 with space',
+                      'https://relay.example.com:abc/v1',
+                      'https://relay.example.com:0/v1',
+                      'https://relay.example.com:65536/v1',
                       'https://relay.example.com/' + 'a' * 2100):
             with self.subTest(value=value[:60]):
                 with self.assertRaises(ValueError):
@@ -187,6 +190,21 @@ class CustomProfileConfigurationTests(unittest.TestCase):
         row = db.session.get(AIProfile, saved['id'])
         self.assertTrue(row.enabled)
         self.assertEqual(row.tested_version, row.version)
+
+    def test_connection_test_succeeds_when_custom_gateway_omits_usage(self):
+        def spy(profile, key, messages, **kwargs):
+            return ProviderResult('{"ok":true}', 'stop', {'known': False}, 'fixture')
+        saved = self.save_custom()
+        with patch('backend.ai.providers.complete', side_effect=spy):
+            result = test_connection(saved['id'])
+        self.assertTrue(result['tested'])
+        self.assertEqual(result['test_code'], 'ok')
+        self.assertFalse(result['usage_reported'])
+        row = db.session.get(AIProfile, saved['id'])
+        self.assertTrue(row.enabled)
+        execution = db.session.get(AIExecution, result['provenance']['execution_id'])
+        self.assertFalse(execution.usage['known'])
+        self.assertEqual(execution.reserved_tokens, 0)
 
 
 class CustomEndpointMigrationTests(unittest.TestCase):

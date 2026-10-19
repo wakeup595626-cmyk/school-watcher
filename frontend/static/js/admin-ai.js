@@ -162,7 +162,9 @@
                     field('aiStatus').textContent = uiT('正在测试 AI 连接…');
                     const result = await api('/api/admin/ai/profiles/' + profile.id + '/test', 'POST', {});
                     await window.loadAISettings();
-                    field('aiStatus').textContent = result.tested === true ? uiT('测试通过，请在下方选择使用这个服务的功能并保存。') : (result.test_code === 'usage_unavailable' ? uiT('服务商未返回调用用量，暂时无法启用。') : (result.error || uiT('测试未通过，请核对模型名称、密钥及其所属区域。')));
+                    field('aiStatus').textContent = result.tested === true ? (result.usage_reported === false
+                        ? uiT('测试通过，但服务商未返回调用用量；实际调用不会计入 Token 统计。')
+                        : uiT('测试通过，请在下方选择使用这个服务的功能并保存。')) : (result.test_code === 'usage_unavailable' ? uiT('服务商未返回调用用量，暂时无法启用。') : (result.error || uiT('测试未通过，请核对模型名称、密钥及其所属区域。')));
                 }], [profile.enabled ? uiT('停用') : uiT('启用'), async () => {
                     const enabled = !profile.enabled;
                     await api('/api/admin/ai/profiles/' + profile.id, 'PUT', {enabled, expected_version: profile.version});

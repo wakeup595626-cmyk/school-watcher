@@ -4,7 +4,7 @@
 
 ## 下载和安装
 
-[GitHub Releases](https://github.com/jintairezhao/school-watcher/releases) 提供 Windows x64 安装程序及便携 ZIP，以及 Apple 芯片、Intel Mac 两种 DMG。macOS 构建目标为 macOS 15 及以上。Windows 使用 WebView2，缺少该组件时安装程序会运行微软官方引导程序，首次安装需要联网。
+[GitHub Releases](https://github.com/wakeup595626-cmyk/school-watcher/releases) 提供 Windows x64 安装程序及便携 ZIP，以及 Apple 芯片、Intel Mac 两种 DMG。macOS 构建目标为 macOS 15 及以上。Windows 使用 WebView2，缺少该组件时安装程序会运行微软官方引导程序，首次安装需要联网。
 
 首次启动直接进入通知页面，无需注册或登录，可直接打开系统管理。应用菜单可检查更新、查看采集组件、打开数据文件夹或退出。桌面窗口使用每次启动的本机访问凭据，保留写操作保护。源码与安装版共用同一入口，不再提供账号系统。
 
