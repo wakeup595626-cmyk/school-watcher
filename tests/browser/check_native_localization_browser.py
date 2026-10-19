@@ -21,8 +21,6 @@ def main():
         language = DesktopLanguage(Path(folder)); language.set_locale('en')
         browser = pw.chromium.launch(channel=os.environ.get('WATCHER_TEST_BROWSER_CHANNEL', 'msedge'), headless=True)
         for theme in ('light', 'dark'):
-            page = browser.new_page(viewport={'width':480,'height':500}, color_scheme=theme)
-            page.on('pageerror', lambda error: errors.append(str(error)))
             for name, states in (
                 ('updates', [
                     {'phase':'idle', 'message':'当前版本 2.24'},
@@ -48,6 +46,8 @@ def main():
                     {'phase':'error','step':2,'message':'迁移未完成','detail':'原数据仍保留，重新打开后继续。','done':True,'restart':True},
                 ]),
             ):
+                page = browser.new_page(viewport={'width':480,'height':500}, color_scheme=theme)
+                page.on('pageerror', lambda error, theme=theme, name=name: errors.append(f'{theme}/{name}: {error}'))
                 page.set_content(native_page(name, language))
                 first = language.state(dict({'current':'2.24', 'detail':'', 'can_cancel':True}, **states[0]))
                 page.evaluate('''s => {
@@ -77,6 +77,9 @@ def main():
                     page.evaluate("() => {window.pywebview.api.check=async()=>{throw new Error('fixture');};}")
                     page.locator('#action').click()
                     expect(page.locator('#message')).to_have_text('Operation incomplete. Try again.')
+                page.close()
+            page = browser.new_page(viewport={'width':480,'height':500}, color_scheme=theme)
+            page.on('pageerror', lambda error, theme=theme: errors.append(f'{theme}/loading: {error}'))
             page.set_content(native_page('loading', language))
             expect(page.locator('html')).to_have_attribute('lang', 'en')
             assert not re.search(r'[\u4e00-\u9fff]', page.locator('body').inner_text())
